@@ -259,6 +259,10 @@ function isAuthRequest(method, url) {
   return method === "POST" && url.pathname === "/auth/request";
 }
 
+function isAuthVerifyRequest(method, url) {
+  return method === "GET" && url.pathname === "/auth/verify";
+}
+
 function looksLikeProviderRateLimit(err) {
   return err.status === 429
     || err.code === "RATE_LIMITED"
@@ -380,7 +384,7 @@ class RpowClient {
     while (true) {
       attempt += 1;
       const controller = new AbortController();
-      const requestTimeoutMs = Number(options.timeoutMs || (isAuthRequest(method, url) ? Math.max(this.timeoutMs, AUTH_REQUEST_TIMEOUT_MS) : this.timeoutMs));
+      const requestTimeoutMs = Number(options.timeoutMs || ((isAuthRequest(method, url) || isAuthVerifyRequest(method, url)) ? Math.max(this.timeoutMs, AUTH_REQUEST_TIMEOUT_MS) : this.timeoutMs));
       const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
       const started = Date.now();
       try {
@@ -447,6 +451,11 @@ class RpowClient {
         if (isAuthRequest(method, url) && err?.name === "AbortError") {
           const e = new Error("magic-link request timed out; if the email arrived, paste that link instead of requesting another one");
           e.code = "MAGIC_LINK_MAY_BE_SENT";
+          throw e;
+        }
+        if (isAuthVerifyRequest(method, url) && err?.name === "AbortError") {
+          const e = new Error("magic-link verification timed out; the link may have been consumed, request a fresh link before trying again");
+          e.code = "MAGIC_LINK_VERIFY_TIMEOUT";
           throw e;
         }
         if (isAuthRequest(method, url) && looksLikeProviderRateLimit(err)) {

@@ -299,6 +299,8 @@ node rpow-cli.js complete-login --link "PASTE_MAGIC_LINK_DARI_EMAIL"
 
 Magic link biasanya cepat expired. Kalau sudah expired, tunggu sekitar 60 detik, request link baru, lalu pakai link itu segera.
 
+Kalau `complete-login` sempat timeout lalu retry menjadi `invalid or expired link`, token kemungkinan sudah keburu dipakai server tapi response ke VPS putus. Solusinya sama: request magic link baru, lalu pakai link terbaru.
+
 ## Apa yang Dimining?
 
 CLI ini meminta challenge dari RPOW3, lalu CPU kamu mencari nonce yang membuat:
