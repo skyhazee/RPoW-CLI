@@ -153,6 +153,13 @@ Mining terus sampai distop:
 node rpow-cli.js mine --count 0 --workers 6 --engine native
 ```
 
+Mining auto-restart kalau error/putus:
+
+```bash
+chmod +x run-forever.sh
+WORKERS=6 ./run-forever.sh
+```
+
 Stop mining:
 
 ```text
@@ -204,6 +211,79 @@ Status umum:
 - `SUBMITTING`: nonce sudah ketemu, sedang submit ke server
 - `NEXT CHALLENGE`: token diterima, lanjut challenge berikutnya
 - `WARN`: ada warning, biasanya challenge lama sudah claimed/expired
+
+## Auto Restart di VPS
+
+Pakai script ini kalau mau miner nyala lagi otomatis saat error, koneksi putus, API timeout, atau proses CLI exit:
+
+```bash
+cd ~/RPoW-CLI
+chmod +x run-forever.sh
+WORKERS=2 ./run-forever.sh
+```
+
+Default script:
+
+```text
+COUNT=0
+ENGINE=native
+RESTART_DELAY=10
+LOG_EVERY_MS=1000
+```
+
+Artinya mining nonstop, pakai native miner, dan restart 10 detik setelah crash/error.
+
+Contoh VPS 4 vCPU:
+
+```bash
+WORKERS=3 ./run-forever.sh
+```
+
+Contoh VPS 8 vCPU:
+
+```bash
+WORKERS=6 ./run-forever.sh
+```
+
+Kalau mau jalan di background setelah SSH ditutup:
+
+```bash
+nohup env WORKERS=3 ./run-forever.sh > rpow-miner.log 2>&1 &
+```
+
+Lihat log:
+
+```bash
+tail -f rpow-miner.log
+```
+
+Stop proses background:
+
+```bash
+pkill -f run-forever.sh
+pkill -f rpow-cli.js
+pkill -f rpow-native-miner
+```
+
+Alternatif yang lebih enak: pakai `tmux`.
+
+```bash
+apt install -y tmux
+tmux new -s rpow
+WORKERS=3 ./run-forever.sh
+```
+
+Keluar dari tmux tanpa stop miner:
+
+```text
+Ctrl+B lalu D
+```
+
+Masuk lagi:
+
+```bash
+tmux attach -t rpow
+```
 
 ## Update Repo di WSL atau VPS
 
