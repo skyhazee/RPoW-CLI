@@ -1114,5 +1114,6 @@ Options:
 
 main().catch((err) => {
   log("error", err.message, { code: err.code, status: err.status });
+  if (activeDashboard) activeDashboard.stop("ERROR");
   process.exitCode = 1;
 });

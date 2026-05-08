@@ -363,6 +363,15 @@ Kalau dashboard berantakan di terminal kecil, pakai log biasa:
 node rpow-cli.js mine --count 0 --workers 4 --engine native --no-dashboard
 ```
 
+Kalau dashboard berhenti di `STATUS: ERROR`, update repo lalu jalankan pakai auto-restart:
+
+```bash
+git pull
+WORKERS=3 ./run-forever.sh
+```
+
+Auto-restart memakai `--no-dashboard`, jadi kalau API RPOW3 error lama, proses akan exit lalu dinyalakan ulang sendiri.
+
 Kalau RPOW3 API sedang lambat/down, tunggu dan coba lagi. Kadang mining cepat, tapi submit `/mint` menunggu server.
 
 Kalau di VPS muncul rate limit saat login tapi email sudah masuk:
