@@ -222,6 +222,12 @@ chmod +x run-forever.sh
 WORKERS=2 ./run-forever.sh
 ```
 
+Kalau mau auto-restart tapi tetap lihat live dashboard:
+
+```bash
+DASHBOARD=1 WORKERS=3 ./run-forever.sh
+```
+
 Default script:
 
 ```text
@@ -229,9 +235,10 @@ COUNT=0
 ENGINE=native
 RESTART_DELAY=10
 LOG_EVERY_MS=1000
+DASHBOARD=0
 ```
 
-Artinya mining nonstop, pakai native miner, dan restart 10 detik setelah crash/error.
+Artinya mining nonstop, pakai native miner, restart 10 detik setelah crash/error, dan pakai log biasa. Set `DASHBOARD=1` untuk tampilan live dashboard.
 
 Contoh VPS 4 vCPU:
 

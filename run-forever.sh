@@ -8,6 +8,7 @@ ENGINE="${ENGINE:-native}"
 RESTART_DELAY="${RESTART_DELAY:-10}"
 LOG_EVERY_MS="${LOG_EVERY_MS:-1000}"
 EXTRA_ARGS="${EXTRA_ARGS:-}"
+DASHBOARD="${DASHBOARD:-0}"
 
 if [ -z "${WORKERS:-}" ]; then
   cpu_count="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 2)"
@@ -32,7 +33,7 @@ on_stop() {
 trap on_stop INT TERM
 
 echo "RPoW CLI auto-restart runner"
-echo "COUNT=$COUNT ENGINE=$ENGINE WORKERS=$WORKERS RESTART_DELAY=${RESTART_DELAY}s"
+echo "COUNT=$COUNT ENGINE=$ENGINE WORKERS=$WORKERS RESTART_DELAY=${RESTART_DELAY}s DASHBOARD=$DASHBOARD"
 echo "Press Ctrl+C to stop."
 echo
 
@@ -40,12 +41,17 @@ while [ "$stop_requested" -eq 0 ]; do
   started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "$started_at START node rpow-cli.js mine --count $COUNT --workers $WORKERS --engine $ENGINE"
 
+  dashboard_args=()
+  if [ "$DASHBOARD" != "1" ]; then
+    dashboard_args+=(--no-dashboard)
+  fi
+
   node rpow-cli.js mine \
     --count "$COUNT" \
     --workers "$WORKERS" \
     --engine "$ENGINE" \
     --log-every-ms "$LOG_EVERY_MS" \
-    --no-dashboard \
+    "${dashboard_args[@]}" \
     $EXTRA_ARGS
 
   code=$?
