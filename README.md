@@ -285,6 +285,20 @@ node rpow-cli.js mine --count 0 --workers 4 --engine native --no-dashboard
 
 Kalau RPOW3 API sedang lambat/down, tunggu dan coba lagi. Kadang mining cepat, tapi submit `/mint` menunggu server.
 
+Kalau di VPS muncul rate limit saat login tapi email sudah masuk:
+
+```text
+magic-link request is rate-limited
+```
+
+jangan request login berulang. Copy link terbaru dari email dan jalankan sebelum expired:
+
+```bash
+node rpow-cli.js complete-login --link "PASTE_MAGIC_LINK_DARI_EMAIL"
+```
+
+Magic link biasanya cepat expired. Kalau sudah expired, tunggu sekitar 60 detik, request link baru, lalu pakai link itu segera.
+
 ## Apa yang Dimining?
 
 CLI ini meminta challenge dari RPOW3, lalu CPU kamu mencari nonce yang membuat:

@@ -13,6 +13,7 @@ const DEFAULT_SITE_ORIGIN = "https://rpow3.com";
 const DEFAULT_API_ORIGIN = "https://api.rpow3.com";
 const DEFAULT_INDEX = path.join(__dirname, "index.js");
 const DEFAULT_STATE = path.join(__dirname, ".rpow-cli-state.json");
+const AUTH_REQUEST_TIMEOUT_MS = 60000;
 const MINER_WORKER = path.join(__dirname, "rpow-miner-worker.js");
 const NATIVE_MINER_CANDIDATES = process.platform === "win32"
   ? [
@@ -379,7 +380,8 @@ class RpowClient {
     while (true) {
       attempt += 1;
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+      const requestTimeoutMs = Number(options.timeoutMs || (isAuthRequest(method, url) ? Math.max(this.timeoutMs, AUTH_REQUEST_TIMEOUT_MS) : this.timeoutMs));
+      const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
       const started = Date.now();
       try {
         const headers = {
@@ -442,6 +444,11 @@ class RpowClient {
         }
         return { res, data: parsed ?? text };
       } catch (err) {
+        if (isAuthRequest(method, url) && err?.name === "AbortError") {
+          const e = new Error("magic-link request timed out; if the email arrived, paste that link instead of requesting another one");
+          e.code = "MAGIC_LINK_MAY_BE_SENT";
+          throw e;
+        }
         if (isAuthRequest(method, url) && looksLikeProviderRateLimit(err)) {
           const waitSeconds = Math.ceil((err.cooldownMs || 60000) / 1000);
           const e = new Error(`magic-link request is rate-limited; wait at least ${waitSeconds}s before running login again`);
@@ -483,6 +490,19 @@ class RpowClient {
   async api(method, pathName, body, options) {
     return (await this.request(method, pathName, body, options)).data;
   }
+}
+
+async function requestMagicLink(client, email) {
+  try {
+    await client.api("POST", "/auth/request", { email }, { timeoutMs: AUTH_REQUEST_TIMEOUT_MS });
+    log("success", "magic link requested; check your email");
+  } catch (err) {
+    if (err.code !== "MAGIC_LINK_MAY_BE_SENT") throw err;
+    log("warn", err.message);
+  }
+  client.state.email = email;
+  client.state.login_requested_at = new Date().toISOString();
+  client.save();
 }
 
 function tryJson(text) {
@@ -948,11 +968,7 @@ async function ensureLoginInteractive(client) {
   const savedEmail = client.state.email || "";
   const email = await promptDefault("Email login", savedEmail);
   if (!email) throw new Error("email is required");
-  await client.api("POST", "/auth/request", { email });
-  client.state.email = email;
-  client.state.login_requested_at = new Date().toISOString();
-  client.save();
-  log("success", "magic link requested; check your email");
+  await requestMagicLink(client, email);
 
   while (true) {
     const link = await promptLine("Paste magic link: ");
@@ -1011,11 +1027,8 @@ async function main() {
 
   if (command === "login") {
     const email = args.email || await promptLine("email: ");
-    await client.api("POST", "/auth/request", { email });
-    client.state.email = email;
-    client.state.login_requested_at = new Date().toISOString();
-    client.save();
-    log("success", "magic link requested; run complete-login with the emailed URL");
+    await requestMagicLink(client, email);
+    log("success", "run complete-login with the emailed URL");
     return;
   }
 
