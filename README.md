@@ -1,404 +1,319 @@
-# RPOW Native CLI Portable
+# RPoW CLI Miner
 
-Portable command-line client for RPOW3 with a native C proof-of-work miner. It reproduces the site's browser API pipeline without opening the web UI: magic-link login, session cookies, challenge request, local C mining, minting, sending, activity and ledger queries.
+CLI miner sederhana untuk RPOW3. Versi ini sudah dibuat lebih enak dipakai:
 
-This is an unofficial tool. Use it only with your own account and follow the service rules of the RPOW3 site.
+- Mode interaktif: cukup jalankan `node rpow-cli.js`
+- Login pakai magic link
+- Native C miner untuk performa lebih cepat
+- Live dashboard saat mining
+- Mode nonstop sampai dihentikan sendiri dengan `Ctrl+C`
 
-## Features
-
-- Uses the native C miner as the recommended mining engine.
-- Includes the native C miner source and beginner-friendly build instructions.
-- Uses Node.js 18+ only for CLI orchestration, HTTP requests and session handling.
-- Supports magic-link login and local session persistence.
-- Keeps a slower JavaScript miner only as a fallback.
-- Resumes an unfinished challenge from the saved nonce when possible.
-- Logs HTTP retries and mining progress without printing cookies or magic-link query strings.
-- Restricts requests to the known RPOW3 site/API hosts.
-
-## Files
+Default API:
 
 ```text
-rpow-native-miner.c      Native C miner source, buildable with gcc/clang.
-build-native.ps1         Windows helper script for building rpow-native-miner.exe.
-build-native.sh          macOS/Linux helper script for building rpow-native-miner.
-rpow-cli.js              Node.js CLI wrapper for login, API requests and miner orchestration.
-rpow-miner-worker.js     Slower JavaScript fallback miner used only with `--engine node`.
-index.js                 Frontend bundle used for API discovery by `map`.
-README.md                Public usage guide.
-PUBLICATION_GUIDE.md     Maintainer notes for publishing this repo.
+https://api.rpow3.com
 ```
 
-Runtime state is stored in `.rpow-cli-state.json`. It contains account email, cookies/session data, current challenge and last mint metadata. Do not publish it.
+## Penting
 
-## Requirements
+File `.rpow-cli-state.json` berisi cookie/session login kamu. Jangan upload, jangan share, jangan kirim ke orang lain.
 
-- Node.js 18 or newer for the CLI wrapper.
-- A native C miner binary built from `rpow-native-miner.c`:
-  - Windows output name: `rpow-native-miner.exe`.
-  - Linux/macOS output name: `rpow-native-miner`.
-- Optional: gcc/clang if you want to rebuild the native C miner yourself.
+File itu sudah masuk `.gitignore`.
 
-Check Node.js:
+## Install Dari Nol di Ubuntu WSL
 
-```powershell
-node -v
-```
-
-## Quick Start
-
-Open PowerShell in the repository folder:
-
-```powershell
-.\build-native.ps1
-node rpow-cli.js map
-node rpow-cli.js login --email you@example.com
-node rpow-cli.js complete-login --link "MAGIC_LINK_FROM_EMAIL"
-node rpow-cli.js mine --count 1 --engine native
-```
-
-On macOS/Linux, build first with:
-
-```bash
-./build-native.sh
-```
-
-For a longer native C mining run:
-
-```powershell
-node rpow-cli.js mine --count 10 --workers 8 --engine native
-```
-
-If the native C miner is unavailable, use the slower JavaScript fallback:
-
-```powershell
-node rpow-cli.js mine --count 1 --workers 8 --engine node
-```
-
-## Native C Setup for Beginners
-
-The CLI itself runs with Node.js, but mining should run through the C binary. Build the C miner once, keep the binary in the same folder as `rpow-cli.js`, then run the CLI with `--engine native`.
-
-### Windows: Build the C Miner
-
-Check that Node.js works:
-
-```powershell
-node -v
-```
-
-Install a C compiler if you do not have one:
-
-1. Install MSYS2 from `https://www.msys2.org/`.
-2. Open "MSYS2 MinGW x64" from the Start menu.
-3. Install gcc:
-
-```bash
-pacman -S --needed mingw-w64-x86_64-gcc
-```
-
-Build from PowerShell if `gcc` is available in PATH:
-
-```powershell
-.\build-native.ps1
-```
-
-If PowerShell cannot find `gcc`, build from the MSYS2 MinGW x64 shell instead.
-
-Go to the project folder. Example:
-
-```bash
-cd /c/Users/YOUR_NAME/Downloads/rpow-native-cli-portable
-```
-
-Build the C miner:
-
-```bash
-gcc -O3 -march=native -pthread rpow-native-miner.c -o rpow-native-miner.exe
-```
-
-Check that the binary exists:
-
-```bash
-ls -l rpow-native-miner.exe
-```
-
-Go back to PowerShell and run:
-
-```powershell
-node rpow-cli.js mine --count 1 --workers 8 --engine native
-```
-
-### Linux/macOS: Build the C Miner
-
-Install a compiler first.
-
-Ubuntu/Debian:
+Masuk Ubuntu WSL, lalu jalankan:
 
 ```bash
 sudo apt update
-sudo apt install build-essential nodejs
+sudo apt install -y git build-essential nodejs npm
 ```
 
-macOS with Xcode Command Line Tools:
+Clone repo:
 
 ```bash
-xcode-select --install
+cd ~
+git clone https://github.com/skyhazee/RPoW-CLI.git
+cd RPoW-CLI
 ```
 
-Build the native C miner:
+Build native miner:
 
 ```bash
+chmod +x build-native.sh
 ./build-native.sh
 ```
 
-Run mining with the C engine:
+Cek target API:
 
 ```bash
-node rpow-cli.js mine --count 1 --workers 8 --engine native
-```
-
-The CLI looks for `rpow-native-miner.exe` on Windows and `rpow-native-miner` on macOS/Linux. If no native binary exists, `--engine native` will fail and tell you to build the native miner.
-
-## Commands
-
-### `map`
-
-Shows the API origin, endpoints found in `index.js`, and the actual pipeline used by the CLI.
-
-```powershell
 node rpow-cli.js map
 ```
 
-### `login`
+Pastikan muncul:
 
-Requests a magic login link through `POST /auth/request`.
-
-```powershell
-node rpow-cli.js login --email you@example.com
+```text
+API origin: https://api.rpow3.com
 ```
 
-If the API returns a rate limit, the command stops instead of repeatedly requesting email links.
+Jalankan mode interaktif:
 
-### `complete-login`
-
-Accepts the magic link from email, follows it, stores session cookies in the local state file and verifies the session through `GET /me`.
-
-```powershell
-node rpow-cli.js complete-login --link "https://..."
+```bash
+node rpow-cli.js
 ```
 
-### `me`
+Ikuti prompt:
 
-Shows the current user, balance and counters. Requires an active session.
+```text
+Email login:
+Paste magic link:
+Start mining now [Y/n]:
+Engine [native]:
+Workers (max ... auto-detected) [8]:
+How many tokens to mint (0 = until stopped) [0]:
+```
 
-```powershell
+Tips isi prompt:
+
+- `Engine [native]`: tekan Enter saja
+- `Workers`: untuk laptop mulai dari `4` atau `6`
+- `How many tokens`: isi `1` untuk test, isi `0` untuk mining terus sampai `Ctrl+C`
+
+## Install Dari Nol di VPS Ubuntu
+
+SSH ke VPS:
+
+```bash
+ssh root@IP_VPS_KAMU
+```
+
+Install dependency:
+
+```bash
+apt update
+apt install -y git build-essential nodejs npm
+```
+
+Clone repo:
+
+```bash
+cd ~
+git clone https://github.com/skyhazee/RPoW-CLI.git
+cd RPoW-CLI
+```
+
+Build miner:
+
+```bash
+chmod +x build-native.sh
+./build-native.sh
+```
+
+Login dan mining:
+
+```bash
+node rpow-cli.js
+```
+
+Kalau VPS kamu kecil, jangan pakai worker terlalu tinggi. Contoh aman:
+
+```text
+Workers: 2
+```
+
+Untuk VPS 4 vCPU:
+
+```text
+Workers: 3
+```
+
+Untuk VPS 8 vCPU:
+
+```text
+Workers: 6
+```
+
+## Command Cepat
+
+Cek akun:
+
+```bash
 node rpow-cli.js me
 ```
 
-### `mine`
+Mining 1 token:
 
-Runs the mining pipeline: `GET /me`, `POST /challenge`, local native C proof-of-work by default, `POST /mint`.
-
-```powershell
-node rpow-cli.js mine --count 1 --engine native
+```bash
+node rpow-cli.js mine --count 1 --workers 4 --engine native
 ```
 
-### `run`
+Mining terus sampai distop:
 
-Alias for `mine`, useful for multiple tokens.
-
-```powershell
-node rpow-cli.js run --count 3
+```bash
+node rpow-cli.js mine --count 0 --workers 6 --engine native
 ```
 
-### `send`
+Stop mining:
 
-Sends RPOW to another email through `POST /send`. Requires an active session and balance.
-
-```powershell
-node rpow-cli.js send --to friend@example.com --amount 1
+```text
+Ctrl+C
 ```
 
-### `activity`
+Matikan dashboard, pakai log biasa:
 
-Shows account activity through `GET /activity`.
-
-```powershell
-node rpow-cli.js activity
+```bash
+node rpow-cli.js mine --count 0 --workers 6 --engine native --no-dashboard
 ```
 
-### `ledger`
+Cek public ledger:
 
-Shows public ledger statistics. No session is required.
-
-```powershell
+```bash
 node rpow-cli.js ledger
 ```
 
-### `logout`
+Logout:
 
-Calls `POST /auth/logout` and clears local cookies.
-
-```powershell
+```bash
 node rpow-cli.js logout
 ```
 
-## Options
+## Live Dashboard
 
-### `--state`
+Saat mining, tampilan terminal akan berubah menjadi dashboard:
 
-Path to the state file. Default: `.rpow-cli-state.json`.
+```text
++-- MINE --------------------------------------------------------------+
+|   TARGET            : 25 trailing zero bits                         |
+|   WORKER            : 6/12 (MAX WORKER AUTO DETECT)                 |
+|   HASHES (current)  : 12345678                                      |
+|   RATE              : 15.20 MH/s                                    |
+|   ELAPSED           : 00:00:12                                      |
+|   STATUS            : MINING                                        |
+|   MINED THIS RUN    : 3                                             |
+|   TOTAL MINED       : 10                                            |
++----------------------------------------------------------------------+
 
-```powershell
-node rpow-cli.js mine --state .my-rpow-state.json
++-- LOGS --------------------------------------------------------------+
+| 2026-... INFO challenge ...                                         |
++----------------------------------------------------------------------+
 ```
 
-### `--timeout`
+Status umum:
 
-HTTP request timeout in milliseconds. Default: `20000`.
+- `MINING`: CPU sedang mencari nonce valid
+- `SUBMITTING`: nonce sudah ketemu, sedang submit ke server
+- `NEXT CHALLENGE`: token diterima, lanjut challenge berikutnya
+- `WARN`: ada warning, biasanya challenge lama sudah claimed/expired
 
-```powershell
-node rpow-cli.js ledger --timeout 10000
+## Update Repo di WSL atau VPS
+
+Masuk folder repo:
+
+```bash
+cd ~/RPoW-CLI
 ```
 
-### `--retries`
+Ambil update terbaru:
 
-Number of retries for transient failures: timeout, `429`, `408`, `425`, `5xx`. Default: `5`.
-
-```powershell
-node rpow-cli.js mine --retries 8
+```bash
+git pull
 ```
 
-### `--log-every-ms`
-
-How often mining progress is logged and nonce progress is saved. Default: `5000`.
-
-```powershell
-node rpow-cli.js mine --log-every-ms 2000
-```
-
-### `--workers`
-
-Number of CPU worker threads. By default the CLI uses up to 8 workers while leaving one logical CPU for the system.
-
-```powershell
-node rpow-cli.js mine --workers 8
-```
-
-If the system becomes unresponsive, lower the value:
-
-```powershell
-node rpow-cli.js mine --workers 4
-```
-
-### `--engine`
-
-Mining engine: `native` or `node`. `native` is the recommended engine. If `rpow-native-miner.exe` is present, the CLI uses `native` by default.
-
-```powershell
-node rpow-cli.js mine --engine native --workers 8
-node rpow-cli.js mine --engine node --workers 8
-```
-
-### `--fresh`
-
-Ignores a saved challenge and requests a fresh one through `POST /challenge`.
-
-```powershell
-node rpow-cli.js mine --fresh
-```
-
-### `--verbose`
-
-Enables detailed HTTP logs.
-
-```powershell
-node rpow-cli.js mine --verbose
-```
-
-Or with an environment variable:
-
-```powershell
-$env:RPOW_VERBOSE=1
-node rpow-cli.js mine
-```
-
-Disable colors:
-
-```powershell
-$env:NO_COLOR=1
-node rpow-cli.js mine
-```
-
-## Native C Miner
-
-The repository is intended to be used with the native C miner. Build it from source before using `--engine native`.
-
-Windows:
-
-```powershell
-.\build-native.ps1
-```
-
-Linux/macOS:
+Build ulang native miner jika ada update file C:
 
 ```bash
 ./build-native.sh
 ```
 
-The JavaScript engine exists only as a slower fallback for systems without a compiled miner.
+Jalankan lagi:
 
-## Logs and Privacy
+```bash
+node rpow-cli.js
+```
 
-Verbose HTTP logs use this shape:
+## Pindah Session ke VPS
+
+Cara paling aman: login ulang di VPS pakai magic link.
+
+Jangan upload `.rpow-cli-state.json` ke GitHub.
+
+Kalau tetap mau copy session secara manual dari WSL ke VPS, lakukan via `scp` pribadi dan jangan share file itu:
+
+```bash
+scp ~/RPoW-CLI/.rpow-cli-state.json root@IP_VPS_KAMU:~/RPoW-CLI/.rpow-cli-state.json
+```
+
+Catatan: path state default ada di folder repo, jadi biasanya filenya:
+
+```bash
+~/RPoW-CLI/.rpow-cli-state.json
+```
+
+## Troubleshooting
+
+Kalau `node` terlalu tua:
+
+```bash
+node -v
+```
+
+Butuh Node.js 18 atau lebih baru. Di Ubuntu lama, install NodeSource:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+Kalau native miner belum ada:
+
+```bash
+./build-native.sh
+```
+
+Kalau permission denied:
+
+```bash
+chmod +x build-native.sh
+chmod +x rpow-native-miner
+```
+
+Kalau dashboard berantakan di terminal kecil, pakai log biasa:
+
+```bash
+node rpow-cli.js mine --count 0 --workers 4 --engine native --no-dashboard
+```
+
+Kalau RPOW3 API sedang lambat/down, tunggu dan coba lagi. Kadang mining cepat, tapi submit `/mint` menunggu server.
+
+## Apa yang Dimining?
+
+CLI ini meminta challenge dari RPOW3, lalu CPU kamu mencari nonce yang membuat:
 
 ```text
-HTTP -> method/url/attempt/has_body/has_cookie
-HTTP <- method/url/attempt/status/ms/set_cookie/retry_after_ms
+SHA-256(nonce_prefix || uint64-le nonce)
 ```
 
-Cookies and magic-link query strings are not printed.
+memenuhi difficulty, misalnya `25 trailing zero bits`.
 
-Mining progress logs look like this:
+Kalau nonce valid ditemukan, CLI submit ke server RPOW3. Jika diterima, akun kamu mendapat 1 RPOW token di ledger RPOW3.
+
+Ini bukan mining Bitcoin dan bukan blockchain decentralized. Ini proof-of-work token di server RPOW3.
+
+## File Penting
 
 ```text
-mining hashes=... nonce=... workers=8 engine=native speed="21.00 MH/s"
+rpow-cli.js             CLI utama
+rpow-native-miner.c     Source native miner
+rpow-miner-worker.js    Fallback miner JS
+build-native.sh         Build miner di Linux/WSL/VPS
+build-native.ps1        Build miner di Windows
+index.js                Bundle frontend untuk API map
+.rpow-cli-state.json    Session lokal, jangan dishare
 ```
-
-## Retry and Resume Behavior
-
-The CLI retries transient request failures with exponential backoff and jitter.
-
-`POST /auth/request` is handled conservatively: on rate limit, the CLI stops and asks you to wait instead of spamming email requests.
-
-The state file stores cookies, current challenge, nonce progress and last mint metadata. If mining stops unexpectedly, rerun:
-
-```powershell
-node rpow-cli.js mine --count 1
-```
-
-The CLI will resume from the saved nonce if the challenge is still valid.
-
-## API Pipeline
-
-The site frontend currently uses:
-
-```text
-POST /auth/request   { email }
-GET  /me
-POST /challenge
-POST /mint           { challenge_id, solution_nonce }
-POST /send           { recipient_email, amount, idempotency_key }
-GET  /activity
-GET  /ledger
-POST /auth/logout
-```
-
-For minting, the CLI requests a challenge, mines `SHA-256(nonce_prefix || uint64-le nonce)` locally, then submits the solution through `POST /mint`.
 
 ## Security Notes
 
-The CLI allows requests only to these hosts:
+CLI hanya mengizinkan request ke:
 
 ```text
 api.rpow3.com
@@ -406,4 +321,12 @@ rpow3.com
 www.rpow3.com
 ```
 
-Before publishing or sharing a build, make sure `.rpow-cli-state.json` is not included.
+Yang tidak boleh dipush/share:
+
+```text
+.rpow-cli-state.json
+.env
+rpow-native-miner
+rpow-native-miner.exe
+node_modules/
+```
