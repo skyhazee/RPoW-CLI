@@ -194,9 +194,6 @@ Saat mining, tampilan terminal akan berubah menjadi dashboard:
 |   TARGET            : 25 trailing zero bits                         |
 |   WORKER            : 6/12 (MAX WORKER AUTO DETECT)                 |
 |   CURRENT REWARD    : 0.001 RPOW per solution                       |
-|   NEXT HALVING AT   : 10000000 RPOW total minted                    |
-|   TO NEXT HALVING   : 146374.819791224 RPOW                         |
-|   NEXT REWARD       : 0.0005 RPOW                                   |
 |   HASHES (current)  : 12345678                                      |
 |   RATE              : 15.20 MH/s                                    |
 |   ELAPSED           : 00:00:12                                      |
@@ -260,7 +257,7 @@ DASHBOARD_REFRESH_MS=15000
 
 Artinya mining nonstop, pakai native miner, restart 10 detik setelah crash/error, dan pakai log biasa. Jawab `y` di prompt dashboard untuk tampilan live dashboard.
 
-Saat dashboard aktif, data reward, difficulty, halving, balance, dan total minted akan direfresh dari RPOW2 secara berkala.
+Saat dashboard aktif, data difficulty, balance, account minted, dan total minted akan direfresh dari RPOW2 secara berkala. Reward per solution dihitung dari perubahan balance/account minted setelah mint diterima.
 
 Kalau session expired atau muncul `login required`, auto-restart akan berhenti supaya tidak loop terus. Login ulang dulu, lalu jalankan lagi.
 

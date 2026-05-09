@@ -124,19 +124,50 @@ function formatRpow(value) {
   return n.toLocaleString("en-US", { maximumFractionDigits: 12 });
 }
 
+function baseUnitsToRpow(value, baseUnitsPerRpow = 1_000_000_000) {
+  if (value === undefined || value === null) return null;
+  const units = Number(value);
+  const divisor = Number(baseUnitsPerRpow || 1_000_000_000);
+  if (!Number.isFinite(units) || !Number.isFinite(divisor) || divisor === 0) return null;
+  return units / divisor;
+}
+
 function rewardFromToken(token) {
-  if (!token || typeof token !== "object") return 1;
+  if (!token || typeof token !== "object") return null;
   if (token.value !== undefined) return Number(token.value);
   if (token.amount !== undefined) return Number(token.amount);
-  return 1;
+  if (token.value_base_units !== undefined) return baseUnitsToRpow(token.value_base_units);
+  if (token.amount_base_units !== undefined) return baseUnitsToRpow(token.amount_base_units);
+  return null;
 }
 
 function dashboardPatchFromLedger(ledger = {}) {
-  const currentReward = ledger.current_reward ?? ledger.reward ?? ledger.currentReward ?? null;
-  const nextReward = ledger.next_reward ?? ledger.nextReward ?? null;
-  const totalMined = ledger.total_minted ?? ledger.totalMinted ?? null;
-  const nextHalvingAt = ledger.next_halving_at ?? ledger.nextHalvingAt ?? ledger.next_milestone_at ?? ledger.nextMilestoneAt ?? null;
-  const toNextHalving = ledger.coins_until_next_halving ?? ledger.coinsUntilNextHalving ?? ledger.coins_until_next_milestone ?? ledger.coinsUntilNextMilestone ?? null;
+  const baseUnitsPerRpow = ledger.base_units_per_rpow ?? ledger.baseUnitsPerRpow ?? 1_000_000_000;
+  const currentReward = baseUnitsToRpow(ledger.current_reward_base_units, baseUnitsPerRpow)
+    ?? ledger.current_reward
+    ?? ledger.reward
+    ?? ledger.currentReward
+    ?? null;
+  const nextReward = baseUnitsToRpow(ledger.next_reward_base_units, baseUnitsPerRpow)
+    ?? ledger.next_reward
+    ?? ledger.nextReward
+    ?? null;
+  const totalMined = baseUnitsToRpow(ledger.total_minted_base_units ?? ledger.minted_supply_counter_base_units, baseUnitsPerRpow)
+    ?? ledger.total_minted
+    ?? ledger.totalMinted
+    ?? null;
+  const nextHalvingAt = baseUnitsToRpow(ledger.next_halving_at_base_units, baseUnitsPerRpow)
+    ?? ledger.next_halving_at
+    ?? ledger.nextHalvingAt
+    ?? ledger.next_milestone_at
+    ?? ledger.nextMilestoneAt
+    ?? null;
+  const toNextHalving = baseUnitsToRpow(ledger.base_units_to_next_halving, baseUnitsPerRpow)
+    ?? ledger.coins_until_next_halving
+    ?? ledger.coinsUntilNextHalving
+    ?? ledger.coins_until_next_milestone
+    ?? ledger.coinsUntilNextMilestone
+    ?? null;
   const currentDifficulty = ledger.current_difficulty_bits ?? ledger.currentDifficultyBits ?? ledger.difficulty_bits ?? ledger.difficultyBits ?? null;
   return {
     ...(currentReward !== null ? { reward: currentReward } : {}),
@@ -149,9 +180,18 @@ function dashboardPatchFromLedger(ledger = {}) {
 }
 
 function dashboardPatchFromMe(me = {}) {
+  const baseUnitsPerRpow = me.base_units_per_rpow ?? me.baseUnitsPerRpow ?? 1_000_000_000;
+  const balance = baseUnitsToRpow(me.balance_base_units, baseUnitsPerRpow) ?? me.balance;
+  const minted = baseUnitsToRpow(me.minted_base_units, baseUnitsPerRpow) ?? me.minted;
+  const dailyMintCap = baseUnitsToRpow(me.daily_mint_cap_base_units, baseUnitsPerRpow) ?? me.daily_mint_cap;
+  const dailyMinted = baseUnitsToRpow(me.daily_minted_base_units, baseUnitsPerRpow) ?? me.daily_minted;
+  const dailyRemaining = baseUnitsToRpow(me.daily_remaining_base_units, baseUnitsPerRpow) ?? me.daily_remaining;
   return {
-    ...(me.balance !== undefined ? { balance: Number(me.balance || 0) } : {}),
-    ...(me.minted !== undefined ? { accountMinted: Number(me.minted || 0) } : {}),
+    ...(balance !== undefined && balance !== null ? { balance: Number(balance || 0) } : {}),
+    ...(minted !== undefined && minted !== null ? { accountMinted: Number(minted || 0) } : {}),
+    ...(dailyMintCap !== undefined && dailyMintCap !== null ? { dailyMintCap: Number(dailyMintCap || 0) } : {}),
+    ...(dailyMinted !== undefined && dailyMinted !== null ? { dailyMinted: Number(dailyMinted || 0) } : {}),
+    ...(dailyRemaining !== undefined && dailyRemaining !== null ? { dailyRemaining: Number(dailyRemaining || 0) } : {}),
   };
 }
 
@@ -184,6 +224,9 @@ class Dashboard {
       nextHalvingAt: options.nextHalvingAt || "--",
       toNextHalving: options.toNextHalving || "--",
       currentDifficulty: options.currentDifficulty || "--",
+      dailyMintCap: options.dailyMintCap || "--",
+      dailyMinted: options.dailyMinted || "--",
+      dailyRemaining: options.dailyRemaining || "--",
       challengeId: "--",
     };
     this.timer = setInterval(() => this.render(), 1000);
@@ -228,12 +271,17 @@ class Dashboard {
         elapsed: formatDuration(data.elapsed_ms || Date.now() - this.startedAt),
       });
     } else if (message === "mint/claim accepted") {
+      if (data.__dashboard_updated) {
+        this.update({ status: "ACCEPTED" });
+        return;
+      }
       const token = data.token || data;
-      const reward = rewardFromToken(token);
+      const tokenReward = rewardFromToken(token);
+      const reward = tokenReward ?? (Number(this.state.reward || 0) || 0);
       const minedThisRun = Number(this.state.minedThisRun || 0) + reward;
       this.update({
         status: "ACCEPTED",
-        reward,
+        ...(reward > 0 ? { reward } : {}),
         minedThisRun,
         totalMined: Number(this.state.totalMined || 0) + reward,
         balance: Number(this.state.balance || 0) + reward,
@@ -267,15 +315,15 @@ class Dashboard {
     if (!process.stdout.isTTY) return;
     const s = this.state;
     s.elapsed = s.status === "MINING" ? formatDuration(Date.now() - this.startedAt) : s.elapsed;
-    const lines = [
+    const metricRows = [
       this.sectionTitle("MINE"),
       this.row("CURRENT DIFFICULTY", `${s.currentDifficulty} trailing zero bits`),
       this.row("TARGET", `${s.difficulty} trailing zero bits`),
       this.row("WORKER", `${s.workers}/${s.maxWorkers} (MAX WORKER AUTO DETECT)`),
       this.row("CURRENT REWARD", `${formatRpow(s.reward)} RPOW per solution`),
-      this.row("NEXT HALVING AT", `${formatRpow(s.nextHalvingAt)} RPOW total minted`),
-      this.row("TO NEXT HALVING", `${formatRpow(s.toNextHalving)} RPOW`),
-      this.row("NEXT REWARD", `${formatRpow(s.nextReward)} RPOW`),
+      ...(s.nextHalvingAt !== "--" ? [this.row("NEXT HALVING AT", `${formatRpow(s.nextHalvingAt)} RPOW total minted`)] : []),
+      ...(s.toNextHalving !== "--" ? [this.row("TO NEXT HALVING", `${formatRpow(s.toNextHalving)} RPOW`)] : []),
+      ...(s.nextReward !== "--" ? [this.row("NEXT REWARD", `${formatRpow(s.nextReward)} RPOW`)] : []),
       this.row("HASHES (current)", s.hashes),
       this.row("RATE", s.rate),
       this.row("ELAPSED", s.elapsed),
@@ -284,8 +332,12 @@ class Dashboard {
       this.row("MINED THIS RUN", `${formatRpow(s.minedThisRun)} RPOW`),
       this.row("BALANCE", `${formatRpow(s.balance)} RPOW`),
       this.row("ACCOUNT MINTED", `${formatRpow(s.accountMinted)} RPOW`),
+      ...(s.dailyRemaining !== "--" ? [this.row("DAILY REMAINING", `${formatRpow(s.dailyRemaining)} RPOW`)] : []),
       this.row("TOTAL MINTED", `${formatRpow(s.totalMined)} RPOW`),
       this.row("CHALLENGE", s.challengeId),
+    ];
+    const lines = [
+      ...metricRows,
       `+${"-".repeat(this.width - 2)}+`,
       "",
       this.sectionTitle("LOGS"),
@@ -1021,16 +1073,41 @@ async function runMining(client, args = {}) {
       elapsed_ms: solution.elapsed_ms,
     });
     try {
+      const balanceBefore = activeDashboard ? Number(activeDashboard.state.balance || 0) : Number(me.balance || 0);
+      const accountMintedBefore = activeDashboard ? Number(activeDashboard.state.accountMinted || 0) : Number(me.minted || 0);
       const result = await client.api("POST", "/mint", {
         challenge_id: challenge.challenge_id,
         solution_nonce: solution.solution_nonce,
       });
       minted += 1;
+      let postMintPatch = null;
+      if (activeDashboard) {
+        try {
+          const [freshMe, freshLedger] = await Promise.all([
+            client.api("GET", "/me"),
+            client.api("GET", "/ledger", undefined, { allowUnauthorized: true }),
+          ]);
+          const balanceAfter = Number(freshMe.balance || 0);
+          const accountMintedAfter = Number(freshMe.minted || 0);
+          const inferredReward = Math.max(0, balanceAfter - balanceBefore, accountMintedAfter - accountMintedBefore);
+          postMintPatch = {
+            ...dashboardPatchFromLedger(freshLedger),
+            ...dashboardPatchFromMe(freshMe),
+            ...(inferredReward > 0 ? {
+              reward: inferredReward,
+              minedThisRun: Number(activeDashboard.state.minedThisRun || 0) + inferredReward,
+            } : {}),
+          };
+        } catch (err) {
+          debugLog("post-mint dashboard refresh failed", { error: err.message, code: err.code, status: err.status });
+        }
+      }
       client.state.last_mint = result;
       client.state.challenge = null;
       client.state.mining = null;
       client.save();
-      log("success", "mint/claim accepted", result);
+      if (postMintPatch && activeDashboard) activeDashboard.update(postMintPatch);
+      log("success", "mint/claim accepted", postMintPatch ? { ...result, __dashboard_updated: true } : result);
       log("success", "mint progress", {
         minted,
         target: endless ? "until-stopped" : target,
