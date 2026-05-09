@@ -118,6 +118,19 @@ function formatDuration(ms) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function formatRpow(value) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return String(value || 0);
+  return n.toLocaleString("en-US", { maximumFractionDigits: 12 });
+}
+
+function rewardFromToken(token) {
+  if (!token || typeof token !== "object") return 1;
+  if (token.value !== undefined) return Number(token.value);
+  if (token.amount !== undefined) return Number(token.amount);
+  return 1;
+}
+
 function maxWorkerCount() {
   return Math.max(1, os.cpus().length);
 }
@@ -137,8 +150,14 @@ class Dashboard {
       rate: "0",
       elapsed: "00:00:00",
       status: "IDLE",
-      minedThisRun: 0,
+      mintedSolutions: 0,
+      minedThisRun: options.minedThisRun || 0,
       totalMined: options.totalMined || 0,
+      balance: options.balance || 0,
+      reward: options.reward || "--",
+      nextReward: options.nextReward || "--",
+      nextHalvingAt: options.nextHalvingAt || "--",
+      toNextHalving: options.toNextHalving || "--",
       challengeId: "--",
     };
     this.timer = setInterval(() => this.render(), 1000);
@@ -183,12 +202,20 @@ class Dashboard {
         elapsed: formatDuration(data.elapsed_ms || Date.now() - this.startedAt),
       });
     } else if (message === "mint/claim accepted") {
-      this.update({ status: "ACCEPTED" });
+      const token = data.token || data;
+      const reward = rewardFromToken(token);
+      const minedThisRun = Number(this.state.minedThisRun || 0) + reward;
+      this.update({
+        status: "ACCEPTED",
+        reward,
+        minedThisRun,
+        totalMined: Number(this.state.totalMined || 0) + reward,
+        balance: Number(this.state.balance || 0) + reward,
+      });
     } else if (message === "mint progress") {
       this.update({
         status: "NEXT CHALLENGE",
-        minedThisRun: data.minted || this.state.minedThisRun,
-        totalMined: Number(this.state.totalMined || 0) + 1,
+        mintedSolutions: data.minted || this.state.mintedSolutions,
       });
     } else if (level === "warn") {
       this.update({ status: "WARN" });
@@ -217,12 +244,18 @@ class Dashboard {
       this.sectionTitle("MINE"),
       this.row("TARGET", `${s.difficulty} trailing zero bits`),
       this.row("WORKER", `${s.workers}/${s.maxWorkers} (MAX WORKER AUTO DETECT)`),
+      this.row("CURRENT REWARD", `${formatRpow(s.reward)} RPOW per solution`),
+      this.row("NEXT HALVING AT", `${formatRpow(s.nextHalvingAt)} RPOW total minted`),
+      this.row("TO NEXT HALVING", `${formatRpow(s.toNextHalving)} RPOW`),
+      this.row("NEXT REWARD", `${formatRpow(s.nextReward)} RPOW`),
       this.row("HASHES (current)", s.hashes),
       this.row("RATE", s.rate),
       this.row("ELAPSED", s.elapsed),
       this.row("STATUS", s.status),
-      this.row("MINED THIS RUN", s.minedThisRun),
-      this.row("TOTAL MINED", s.totalMined),
+      this.row("SOLUTIONS THIS RUN", s.mintedSolutions),
+      this.row("MINED THIS RUN", `${formatRpow(s.minedThisRun)} RPOW`),
+      this.row("BALANCE", `${formatRpow(s.balance)} RPOW`),
+      this.row("TOTAL MINTED", `${formatRpow(s.totalMined)} RPOW`),
       this.row("CHALLENGE", s.challengeId),
       `+${"-".repeat(this.width - 2)}+`,
       "",
@@ -882,13 +915,29 @@ async function runMining(client, args = {}) {
   let minted = 0;
   const endless = target === 0;
   const me = await client.api("GET", "/me");
+  let ledger = null;
+  try {
+    ledger = await client.api("GET", "/ledger", undefined, { allowUnauthorized: true });
+  } catch (err) {
+    debugLog("ledger unavailable for dashboard", { error: err.message, code: err.code, status: err.status });
+  }
   const useDashboard = args.dashboard !== false && args["no-dashboard"] !== true && process.stdout.isTTY;
   if (useDashboard) {
+    const currentReward = ledger?.current_reward ?? ledger?.reward ?? ledger?.currentReward ?? null;
+    const nextReward = ledger?.next_reward ?? ledger?.nextReward ?? null;
+    const totalMined = ledger?.total_minted ?? ledger?.totalMinted ?? me.minted ?? 0;
+    const nextHalvingAt = ledger?.next_halving_at ?? ledger?.nextHalvingAt ?? ledger?.next_milestone_at ?? ledger?.nextMilestoneAt ?? null;
+    const toNextHalving = ledger?.coins_until_next_halving ?? ledger?.coinsUntilNextHalving ?? ledger?.coins_until_next_milestone ?? ledger?.coinsUntilNextMilestone ?? null;
     activeDashboard = new Dashboard({
       target: endless ? "until stopped" : String(target),
       workers,
       maxWorkers: maxWorkerCount(),
-      totalMined: Number(me.minted || 0),
+      totalMined: Number(totalMined || 0),
+      balance: Number(me.balance || 0),
+      reward: currentReward ?? "--",
+      nextReward: nextReward ?? "--",
+      nextHalvingAt: nextHalvingAt ?? "--",
+      toNextHalving: toNextHalving ?? "--",
     });
     activeDashboard.update({ status: "STARTING" });
   }

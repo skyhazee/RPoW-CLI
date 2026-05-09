@@ -192,12 +192,18 @@ Saat mining, tampilan terminal akan berubah menjadi dashboard:
 +-- MINE --------------------------------------------------------------+
 |   TARGET            : 25 trailing zero bits                         |
 |   WORKER            : 6/12 (MAX WORKER AUTO DETECT)                 |
+|   CURRENT REWARD    : 0.001 RPOW per solution                       |
+|   NEXT HALVING AT   : 10000000 RPOW total minted                    |
+|   TO NEXT HALVING   : 146374.819791224 RPOW                         |
+|   NEXT REWARD       : 0.0005 RPOW                                   |
 |   HASHES (current)  : 12345678                                      |
 |   RATE              : 15.20 MH/s                                    |
 |   ELAPSED           : 00:00:12                                      |
 |   STATUS            : MINING                                        |
-|   MINED THIS RUN    : 3                                             |
-|   TOTAL MINED       : 10                                            |
+|   SOLUTIONS THIS RUN: 3                                             |
+|   MINED THIS RUN    : 0.003 RPOW                                    |
+|   BALANCE           : 0.026 RPOW                                    |
+|   TOTAL MINTED      : 9853625.180208776 RPOW                        |
 +----------------------------------------------------------------------+
 
 +-- LOGS --------------------------------------------------------------+
