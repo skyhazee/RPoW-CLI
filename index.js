@@ -10435,7 +10435,7 @@ function Dh(e) {
     const t = Gr.indexOf(e);
     return Gr[(t + 1) % Gr.length]
 }
-const Uh = "https://api.rpow3.com";
+const Uh = "https://api.rpow2.com";
 async function rt(e, t, n) {
     const r = await fetch(`${Uh}${t}`, {
         method: e,
@@ -10877,7 +10877,7 @@ function Bh() {
                 margin: "12px 0 0"
             },
             children: `  + PENDING CLAIM
-  ${g} does not have an rpow3 account yet.
+  ${g} does not have an rpow2 account yet.
   An email has been sent inviting them to claim ${C} RPOW.
   Your tokens are reserved until they claim or the link expires (30d).
   transfer id: ${h}`
@@ -10989,7 +10989,7 @@ function Vh() {
   to a chain, automatic difficulty adjustment, and a fixed 21M supply
   cap.
 
-  rpow3.com is a modern tribute to the spirit of Finney's original.
+  rpow2.com is a modern tribute to the spirit of Finney's original.
   No IBM 4758 — Ed25519 signatures, magic-link auth, Postgres ledger.
   Still centralized. Still no supply cap. Still no difficulty
   adjustment. Faithful by design.
@@ -11003,7 +11003,7 @@ function Vh() {
         })
     })
 }
-const Hh = ["+======================================================================+", "|                   RPOW3 - Reusable Proofs of Work                    |", "+======================================================================+"].join(`
+const Hh = ["+======================================================================+", "|                   RPOW2 - Reusable Proofs of Work                    |", "+======================================================================+"].join(`
 `);
 function Qh() {
     const [e,t] = w.useState(Mh());

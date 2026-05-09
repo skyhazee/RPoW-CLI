@@ -1,6 +1,6 @@
 # RPoW CLI Miner
 
-CLI miner sederhana untuk RPOW3. Versi ini sudah dibuat lebih enak dipakai:
+CLI miner sederhana untuk RPOW2. Versi ini sudah dibuat lebih enak dipakai:
 
 - Mode interaktif: cukup jalankan `node rpow-cli.js`
 - Login pakai magic link
@@ -11,7 +11,7 @@ CLI miner sederhana untuk RPOW3. Versi ini sudah dibuat lebih enak dipakai:
 Default API:
 
 ```text
-https://api.rpow3.com
+https://api.rpow2.com
 ```
 
 ## Penting
@@ -53,7 +53,7 @@ node rpow-cli.js map
 Pastikan muncul:
 
 ```text
-API origin: https://api.rpow3.com
+API origin: https://api.rpow2.com
 ```
 
 Jalankan mode interaktif:
@@ -377,9 +377,9 @@ git pull
 WORKERS=3 ./run-forever.sh
 ```
 
-Auto-restart memakai `--no-dashboard`, jadi kalau API RPOW3 error lama, proses akan exit lalu dinyalakan ulang sendiri.
+Auto-restart memakai `--no-dashboard`, jadi kalau API RPOW2 error lama, proses akan exit lalu dinyalakan ulang sendiri.
 
-Kalau RPOW3 API sedang lambat/down, tunggu dan coba lagi. Kadang mining cepat, tapi submit `/mint` menunggu server.
+Kalau RPOW2 API sedang lambat/down, tunggu dan coba lagi. Kadang mining cepat, tapi submit `/mint` menunggu server.
 
 Kalau di VPS muncul rate limit saat login tapi email sudah masuk:
 
@@ -399,7 +399,7 @@ Kalau `complete-login` sempat timeout lalu retry menjadi `invalid or expired lin
 
 ## Apa yang Dimining?
 
-CLI ini meminta challenge dari RPOW3, lalu CPU kamu mencari nonce yang membuat:
+CLI ini meminta challenge dari RPOW2, lalu CPU kamu mencari nonce yang membuat:
 
 ```text
 SHA-256(nonce_prefix || uint64-le nonce)
@@ -407,9 +407,9 @@ SHA-256(nonce_prefix || uint64-le nonce)
 
 memenuhi difficulty, misalnya `25 trailing zero bits`.
 
-Kalau nonce valid ditemukan, CLI submit ke server RPOW3. Jika diterima, akun kamu mendapat 1 RPOW token di ledger RPOW3.
+Kalau nonce valid ditemukan, CLI submit ke server RPOW2. Jika diterima, akun kamu mendapat 1 RPOW token di ledger RPOW2.
 
-Ini bukan mining Bitcoin dan bukan blockchain decentralized. Ini proof-of-work token di server RPOW3.
+Ini bukan mining Bitcoin dan bukan blockchain decentralized. Ini proof-of-work token di server RPOW2.
 
 ## File Penting
 
@@ -428,9 +428,9 @@ index.js                Bundle frontend untuk API map
 CLI hanya mengizinkan request ke:
 
 ```text
-api.rpow3.com
-rpow3.com
-www.rpow3.com
+api.rpow2.com
+rpow2.com
+www.rpow2.com
 ```
 
 Yang tidak boleh dipush/share:

@@ -9,8 +9,8 @@ const readline = require("readline");
 const { spawn } = require("child_process");
 const { Worker } = require("worker_threads");
 
-const DEFAULT_SITE_ORIGIN = "https://rpow3.com";
-const DEFAULT_API_ORIGIN = "https://api.rpow3.com";
+const DEFAULT_SITE_ORIGIN = "https://rpow2.com";
+const DEFAULT_API_ORIGIN = "https://api.rpow2.com";
 const DEFAULT_INDEX = path.join(__dirname, "index.js");
 const DEFAULT_STATE = path.join(__dirname, ".rpow-cli-state.json");
 const AUTH_REQUEST_TIMEOUT_MS = 60000;
@@ -25,9 +25,9 @@ const NATIVE_MINER_CANDIDATES = process.platform === "win32"
     path.join(__dirname, "rpow-native-miner.exe"),
   ];
 const SAFE_HOSTS = new Set([
-  "api.rpow3.com",
-  "rpow3.com",
-  "www.rpow3.com",
+  "api.rpow2.com",
+  "rpow2.com",
+  "www.rpow2.com",
 ]);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
