@@ -54,6 +54,7 @@ EXTRA_ARGS="${EXTRA_ARGS:-}"
 DASHBOARD="${DASHBOARD:-0}"
 TIMEOUT="${TIMEOUT:-60000}"
 RETRIES="${RETRIES:-10}"
+STOP_ON_LOGIN_REQUIRED="${STOP_ON_LOGIN_REQUIRED:-1}"
 
 if [ -z "${WORKERS:-}" ]; then
   WORKERS="$(auto_workers)"
@@ -89,31 +90,74 @@ echo "Press Ctrl+C to stop."
 echo
 
 while [ "$stop_requested" -eq 0 ]; do
+  if [ "$STOP_ON_LOGIN_REQUIRED" = "1" ]; then
+    auth_check="$(node rpow-cli.js me --timeout "$TIMEOUT" --retries 1 2>&1)"
+    auth_code=$?
+    if [ "$auth_code" -ne 0 ]; then
+      echo "$auth_check"
+    fi
+    if printf '%s\n' "$auth_check" | grep -Eqi 'login required|UNAUTHORIZED|session invalid'; then
+      echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) STOP login/session required; not restarting until you login again."
+      echo "Run:"
+      echo "  node rpow-cli.js login --email YOUR_EMAIL"
+      echo "  node rpow-cli.js complete-login --link \"MAGIC_LINK\""
+      echo "  ./run-forever.sh"
+      break
+    fi
+  fi
+
   started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "$started_at START node rpow-cli.js mine --count $COUNT --workers $WORKERS --engine $ENGINE"
+  last_log="$(mktemp "${TMPDIR:-/tmp}/rpow-run.XXXXXX")"
 
   dashboard_args=()
   if [ "$DASHBOARD" != "1" ]; then
     dashboard_args+=(--no-dashboard)
   fi
 
-  node rpow-cli.js mine \
-    --count "$COUNT" \
-    --workers "$WORKERS" \
-    --engine "$ENGINE" \
-    --log-every-ms "$LOG_EVERY_MS" \
-    --timeout "$TIMEOUT" \
-    --retries "$RETRIES" \
-    "${dashboard_args[@]}" \
-    $EXTRA_ARGS
+  if [ "$DASHBOARD" = "1" ]; then
+    node rpow-cli.js mine \
+      --count "$COUNT" \
+      --workers "$WORKERS" \
+      --engine "$ENGINE" \
+      --log-every-ms "$LOG_EVERY_MS" \
+      --timeout "$TIMEOUT" \
+      --retries "$RETRIES" \
+      "${dashboard_args[@]}" \
+      $EXTRA_ARGS
+    code=$?
+  else
+    node rpow-cli.js mine \
+      --count "$COUNT" \
+      --workers "$WORKERS" \
+      --engine "$ENGINE" \
+      --log-every-ms "$LOG_EVERY_MS" \
+      --timeout "$TIMEOUT" \
+      --retries "$RETRIES" \
+      "${dashboard_args[@]}" \
+      $EXTRA_ARGS 2>&1 | tee "$last_log"
+    code=${PIPESTATUS[0]}
+  fi
 
-  code=$?
   finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
   if [ "$stop_requested" -ne 0 ] || [ "$code" -eq 130 ] || [ "$code" -eq 143 ]; then
     echo "$finished_at STOP miner exited with code $code"
+    rm -f "$last_log"
     break
   fi
+
+  if [ "$STOP_ON_LOGIN_REQUIRED" = "1" ] && grep -Eqi 'login required|UNAUTHORIZED|session invalid' "$last_log"; then
+    echo "$finished_at STOP login/session required; not restarting until you login again."
+    echo "Run:"
+    echo "  node rpow-cli.js login --email YOUR_EMAIL"
+    echo "  node rpow-cli.js complete-login --link \"MAGIC_LINK\""
+    echo "  ./run-forever.sh"
+    rm -f "$last_log"
+    break
+  fi
+
+  rm -f "$last_log"
 
   echo "$finished_at WARN miner exited with code $code; restarting in ${RESTART_DELAY}s"
   sleep "$RESTART_DELAY" &

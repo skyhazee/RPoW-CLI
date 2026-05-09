@@ -245,9 +245,12 @@ LOG_EVERY_MS=1000
 DASHBOARD=0
 TIMEOUT=60000
 RETRIES=10
+STOP_ON_LOGIN_REQUIRED=1
 ```
 
 Artinya mining nonstop, pakai native miner, restart 10 detik setelah crash/error, dan pakai log biasa. Jawab `y` di prompt dashboard untuk tampilan live dashboard.
+
+Kalau session expired atau muncul `login required`, auto-restart akan berhenti supaya tidak loop terus. Login ulang dulu, lalu jalankan lagi.
 
 Contoh VPS 4 vCPU:
 
