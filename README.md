@@ -157,7 +157,7 @@ Mining auto-restart kalau error/putus:
 
 ```bash
 chmod +x run-forever.sh
-WORKERS=6 ./run-forever.sh
+./run-forever.sh
 ```
 
 Stop mining:
@@ -219,13 +219,20 @@ Pakai script ini kalau mau miner nyala lagi otomatis saat error, koneksi putus, 
 ```bash
 cd ~/RPoW-CLI
 chmod +x run-forever.sh
-WORKERS=2 ./run-forever.sh
+./run-forever.sh
 ```
 
-Kalau mau auto-restart tapi tetap lihat live dashboard:
+Script akan tanya pilihan seperti ini:
 
-```bash
-DASHBOARD=1 WORKERS=3 ./run-forever.sh
+```text
+Show live dashboard [y/N]:
+Engine [native]:
+Workers (max ... auto-detected) [8]:
+How many tokens to mint (0 = until stopped) [0]:
+HTTP timeout ms [60000]:
+HTTP retries [10]:
+Restart delay seconds [10]:
+Mining log interval ms [1000]:
 ```
 
 Default script:
@@ -236,26 +243,28 @@ ENGINE=native
 RESTART_DELAY=10
 LOG_EVERY_MS=1000
 DASHBOARD=0
+TIMEOUT=60000
+RETRIES=10
 ```
 
-Artinya mining nonstop, pakai native miner, restart 10 detik setelah crash/error, dan pakai log biasa. Set `DASHBOARD=1` untuk tampilan live dashboard.
+Artinya mining nonstop, pakai native miner, restart 10 detik setelah crash/error, dan pakai log biasa. Jawab `y` di prompt dashboard untuk tampilan live dashboard.
 
 Contoh VPS 4 vCPU:
 
 ```bash
-WORKERS=3 ./run-forever.sh
+WORKERS=3 ASSUME_DEFAULTS=1 ./run-forever.sh
 ```
 
 Contoh VPS 8 vCPU:
 
 ```bash
-WORKERS=6 ./run-forever.sh
+WORKERS=6 ASSUME_DEFAULTS=1 ./run-forever.sh
 ```
 
 Kalau mau jalan di background setelah SSH ditutup:
 
 ```bash
-nohup env WORKERS=3 ./run-forever.sh > rpow-miner.log 2>&1 &
+nohup env ASSUME_DEFAULTS=1 WORKERS=3 ./run-forever.sh > rpow-miner.log 2>&1 &
 ```
 
 Lihat log:
@@ -277,7 +286,7 @@ Alternatif yang lebih enak: pakai `tmux`.
 ```bash
 apt install -y tmux
 tmux new -s rpow
-WORKERS=3 ./run-forever.sh
+./run-forever.sh
 ```
 
 Keluar dari tmux tanpa stop miner:
@@ -374,10 +383,10 @@ Kalau dashboard berhenti di `STATUS: ERROR`, update repo lalu jalankan pakai aut
 
 ```bash
 git pull
-WORKERS=3 ./run-forever.sh
+./run-forever.sh
 ```
 
-Auto-restart memakai `--no-dashboard`, jadi kalau API RPOW2 error lama, proses akan exit lalu dinyalakan ulang sendiri.
+Auto-restart default-nya memakai log biasa. Kalau mau live dashboard, jawab `y` saat ditanya `Show live dashboard`.
 
 Kalau RPOW2 API sedang lambat/down, tunggu dan coba lagi. Kadang mining cepat, tapi submit `/mint` menunggu server.
 
