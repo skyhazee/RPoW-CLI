@@ -131,6 +131,30 @@ function rewardFromToken(token) {
   return 1;
 }
 
+function dashboardPatchFromLedger(ledger = {}) {
+  const currentReward = ledger.current_reward ?? ledger.reward ?? ledger.currentReward ?? null;
+  const nextReward = ledger.next_reward ?? ledger.nextReward ?? null;
+  const totalMined = ledger.total_minted ?? ledger.totalMinted ?? null;
+  const nextHalvingAt = ledger.next_halving_at ?? ledger.nextHalvingAt ?? ledger.next_milestone_at ?? ledger.nextMilestoneAt ?? null;
+  const toNextHalving = ledger.coins_until_next_halving ?? ledger.coinsUntilNextHalving ?? ledger.coins_until_next_milestone ?? ledger.coinsUntilNextMilestone ?? null;
+  const currentDifficulty = ledger.current_difficulty_bits ?? ledger.currentDifficultyBits ?? ledger.difficulty_bits ?? ledger.difficultyBits ?? null;
+  return {
+    ...(currentReward !== null ? { reward: currentReward } : {}),
+    ...(nextReward !== null ? { nextReward } : {}),
+    ...(totalMined !== null ? { totalMined: Number(totalMined || 0) } : {}),
+    ...(nextHalvingAt !== null ? { nextHalvingAt } : {}),
+    ...(toNextHalving !== null ? { toNextHalving } : {}),
+    ...(currentDifficulty !== null ? { currentDifficulty } : {}),
+  };
+}
+
+function dashboardPatchFromMe(me = {}) {
+  return {
+    ...(me.balance !== undefined ? { balance: Number(me.balance || 0) } : {}),
+    ...(me.minted !== undefined ? { accountMinted: Number(me.minted || 0) } : {}),
+  };
+}
+
 function maxWorkerCount() {
   return Math.max(1, os.cpus().length);
 }
@@ -153,11 +177,13 @@ class Dashboard {
       mintedSolutions: 0,
       minedThisRun: options.minedThisRun || 0,
       totalMined: options.totalMined || 0,
+      accountMinted: options.accountMinted || 0,
       balance: options.balance || 0,
       reward: options.reward || "--",
       nextReward: options.nextReward || "--",
       nextHalvingAt: options.nextHalvingAt || "--",
       toNextHalving: options.toNextHalving || "--",
+      currentDifficulty: options.currentDifficulty || "--",
       challengeId: "--",
     };
     this.timer = setInterval(() => this.render(), 1000);
@@ -211,6 +237,7 @@ class Dashboard {
         minedThisRun,
         totalMined: Number(this.state.totalMined || 0) + reward,
         balance: Number(this.state.balance || 0) + reward,
+        accountMinted: Number(this.state.accountMinted || 0) + reward,
       });
     } else if (message === "mint progress") {
       this.update({
@@ -242,6 +269,7 @@ class Dashboard {
     s.elapsed = s.status === "MINING" ? formatDuration(Date.now() - this.startedAt) : s.elapsed;
     const lines = [
       this.sectionTitle("MINE"),
+      this.row("CURRENT DIFFICULTY", `${s.currentDifficulty} trailing zero bits`),
       this.row("TARGET", `${s.difficulty} trailing zero bits`),
       this.row("WORKER", `${s.workers}/${s.maxWorkers} (MAX WORKER AUTO DETECT)`),
       this.row("CURRENT REWARD", `${formatRpow(s.reward)} RPOW per solution`),
@@ -255,6 +283,7 @@ class Dashboard {
       this.row("SOLUTIONS THIS RUN", s.mintedSolutions),
       this.row("MINED THIS RUN", `${formatRpow(s.minedThisRun)} RPOW`),
       this.row("BALANCE", `${formatRpow(s.balance)} RPOW`),
+      this.row("ACCOUNT MINTED", `${formatRpow(s.accountMinted)} RPOW`),
       this.row("TOTAL MINTED", `${formatRpow(s.totalMined)} RPOW`),
       this.row("CHALLENGE", s.challengeId),
       `+${"-".repeat(this.width - 2)}+`,
@@ -269,6 +298,7 @@ class Dashboard {
 
   stop(status) {
     clearInterval(this.timer);
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
     if (status) this.update({ status });
     activeDashboard = null;
   }
@@ -907,6 +937,7 @@ async function runMining(client, args = {}) {
   const workers = Number(args.workers || defaultWorkerCount());
   const engine = args.engine || (nativeMinerPath() ? "native" : "node");
   const logEveryMs = Number(args["log-every-ms"] || (engine === "native" ? 1000 : 5000));
+  const dashboardRefreshMs = Number(args["dashboard-refresh-ms"] || 15000);
   if (!Number.isInteger(target) || target < 0) throw new Error("--count must be 0 or a positive integer");
   if (!Number.isInteger(workers) || workers < 1 || workers > maxWorkerCount()) {
     throw new Error(`--workers must be between 1 and ${maxWorkerCount()}`);
@@ -923,23 +954,33 @@ async function runMining(client, args = {}) {
   }
   const useDashboard = args.dashboard !== false && args["no-dashboard"] !== true && process.stdout.isTTY;
   if (useDashboard) {
-    const currentReward = ledger?.current_reward ?? ledger?.reward ?? ledger?.currentReward ?? null;
-    const nextReward = ledger?.next_reward ?? ledger?.nextReward ?? null;
-    const totalMined = ledger?.total_minted ?? ledger?.totalMinted ?? me.minted ?? 0;
-    const nextHalvingAt = ledger?.next_halving_at ?? ledger?.nextHalvingAt ?? ledger?.next_milestone_at ?? ledger?.nextMilestoneAt ?? null;
-    const toNextHalving = ledger?.coins_until_next_halving ?? ledger?.coinsUntilNextHalving ?? ledger?.coins_until_next_milestone ?? ledger?.coinsUntilNextMilestone ?? null;
+    const ledgerPatch = ledger ? dashboardPatchFromLedger(ledger) : {};
+    const mePatch = dashboardPatchFromMe(me);
     activeDashboard = new Dashboard({
       target: endless ? "until stopped" : String(target),
       workers,
       maxWorkers: maxWorkerCount(),
-      totalMined: Number(totalMined || 0),
-      balance: Number(me.balance || 0),
-      reward: currentReward ?? "--",
-      nextReward: nextReward ?? "--",
-      nextHalvingAt: nextHalvingAt ?? "--",
-      toNextHalving: toNextHalving ?? "--",
+      ...ledgerPatch,
+      ...mePatch,
     });
     activeDashboard.update({ status: "STARTING" });
+    if (Number.isFinite(dashboardRefreshMs) && dashboardRefreshMs > 0) {
+      activeDashboard.refreshTimer = setInterval(async () => {
+        if (!activeDashboard) return;
+        try {
+          const [freshLedger, freshMe] = await Promise.all([
+            client.api("GET", "/ledger", undefined, { allowUnauthorized: true }),
+            client.api("GET", "/me"),
+          ]);
+          if (activeDashboard) activeDashboard.update({
+            ...dashboardPatchFromLedger(freshLedger),
+            ...dashboardPatchFromMe(freshMe),
+          });
+        } catch (err) {
+          debugLog("dashboard refresh failed", { error: err.message, code: err.code, status: err.status });
+        }
+      }, dashboardRefreshMs);
+    }
   }
   while (endless || minted < target) {
     let challenge = client.state.challenge;
@@ -1158,6 +1199,7 @@ Options:
   --engine native|node  (native C miner recommended)
   --count 0 means mine until you stop it with Ctrl+C
   --no-dashboard prints plain logs instead of the live dashboard
+  --dashboard-refresh-ms 15000 refreshes ledger/account stats while dashboard is active
   --verbose`);
 }
 

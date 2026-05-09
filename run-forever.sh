@@ -55,6 +55,7 @@ DASHBOARD="${DASHBOARD:-0}"
 TIMEOUT="${TIMEOUT:-60000}"
 RETRIES="${RETRIES:-10}"
 STOP_ON_LOGIN_REQUIRED="${STOP_ON_LOGIN_REQUIRED:-1}"
+DASHBOARD_REFRESH_MS="${DASHBOARD_REFRESH_MS:-15000}"
 
 if [ -z "${WORKERS:-}" ]; then
   WORKERS="$(auto_workers)"
@@ -69,6 +70,7 @@ if [ -t 0 ] && [ "${ASSUME_DEFAULTS:-0}" != "1" ]; then
   COUNT="$(prompt_default "How many tokens to mint (0 = until stopped)" "$COUNT")"
   TIMEOUT="$(prompt_default "HTTP timeout ms" "$TIMEOUT")"
   RETRIES="$(prompt_default "HTTP retries" "$RETRIES")"
+  DASHBOARD_REFRESH_MS="$(prompt_default "Dashboard refresh interval ms" "$DASHBOARD_REFRESH_MS")"
   RESTART_DELAY="$(prompt_default "Restart delay seconds" "$RESTART_DELAY")"
   LOG_EVERY_MS="$(prompt_default "Mining log interval ms" "$LOG_EVERY_MS")"
   echo
@@ -85,7 +87,7 @@ on_stop() {
 trap on_stop INT TERM
 
 echo "RPoW CLI auto-restart runner"
-echo "COUNT=$COUNT ENGINE=$ENGINE WORKERS=$WORKERS TIMEOUT=$TIMEOUT RETRIES=$RETRIES RESTART_DELAY=${RESTART_DELAY}s DASHBOARD=$DASHBOARD"
+echo "COUNT=$COUNT ENGINE=$ENGINE WORKERS=$WORKERS TIMEOUT=$TIMEOUT RETRIES=$RETRIES DASHBOARD_REFRESH_MS=$DASHBOARD_REFRESH_MS RESTART_DELAY=${RESTART_DELAY}s DASHBOARD=$DASHBOARD"
 echo "Press Ctrl+C to stop."
 echo
 
@@ -123,6 +125,7 @@ while [ "$stop_requested" -eq 0 ]; do
       --log-every-ms "$LOG_EVERY_MS" \
       --timeout "$TIMEOUT" \
       --retries "$RETRIES" \
+      --dashboard-refresh-ms "$DASHBOARD_REFRESH_MS" \
       "${dashboard_args[@]}" \
       $EXTRA_ARGS
     code=$?
@@ -134,6 +137,7 @@ while [ "$stop_requested" -eq 0 ]; do
       --log-every-ms "$LOG_EVERY_MS" \
       --timeout "$TIMEOUT" \
       --retries "$RETRIES" \
+      --dashboard-refresh-ms "$DASHBOARD_REFRESH_MS" \
       "${dashboard_args[@]}" \
       $EXTRA_ARGS 2>&1 | tee "$last_log"
     code=${PIPESTATUS[0]}

@@ -190,6 +190,7 @@ Saat mining, tampilan terminal akan berubah menjadi dashboard:
 
 ```text
 +-- MINE --------------------------------------------------------------+
+|   CURRENT DIFFICULTY: 25 trailing zero bits                         |
 |   TARGET            : 25 trailing zero bits                         |
 |   WORKER            : 6/12 (MAX WORKER AUTO DETECT)                 |
 |   CURRENT REWARD    : 0.001 RPOW per solution                       |
@@ -203,6 +204,7 @@ Saat mining, tampilan terminal akan berubah menjadi dashboard:
 |   SOLUTIONS THIS RUN: 3                                             |
 |   MINED THIS RUN    : 0.003 RPOW                                    |
 |   BALANCE           : 0.026 RPOW                                    |
+|   ACCOUNT MINTED    : 0.026 RPOW                                    |
 |   TOTAL MINTED      : 9853625.180208776 RPOW                        |
 +----------------------------------------------------------------------+
 
@@ -237,6 +239,7 @@ Workers (max ... auto-detected) [8]:
 How many tokens to mint (0 = until stopped) [0]:
 HTTP timeout ms [60000]:
 HTTP retries [10]:
+Dashboard refresh interval ms [15000]:
 Restart delay seconds [10]:
 Mining log interval ms [1000]:
 ```
@@ -252,9 +255,12 @@ DASHBOARD=0
 TIMEOUT=60000
 RETRIES=10
 STOP_ON_LOGIN_REQUIRED=1
+DASHBOARD_REFRESH_MS=15000
 ```
 
 Artinya mining nonstop, pakai native miner, restart 10 detik setelah crash/error, dan pakai log biasa. Jawab `y` di prompt dashboard untuk tampilan live dashboard.
+
+Saat dashboard aktif, data reward, difficulty, halving, balance, dan total minted akan direfresh dari RPOW2 secara berkala.
 
 Kalau session expired atau muncul `login required`, auto-restart akan berhenti supaya tidak loop terus. Login ulang dulu, lalu jalankan lagi.
 
